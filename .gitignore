@@ -1,0 +1,21 @@
+node_modules/
+**/node_modules/
+server/data/
+agent/agent-config.json
+.env
+**/.env
+server/.deploy-credentials.txt
+*.log
+
+# Flutter SDK (loyiha ichida)
+tools/flutter/
+tools/flutter_sdk.zip
+tools/jdk17/
+tools/_jdk_tmp/
+tools/microsoft-jdk*.zip
+
+# Flutter
+mobile/device_watch_app/.dart_tool/
+mobile/device_watch_app/build/
+mobile/device_watch_app/.flutter-plugins-dependencies
+mobile/device_watch_app/.flutter-plugins

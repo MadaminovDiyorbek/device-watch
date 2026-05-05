@@ -1,0 +1,47 @@
+# HTTPS — Caddy avtomatik Let’s Encrypt.
+# 1) DNS ni shu server IP ga qarang.
+# 2) .env da JWT_SECRET, ENROLLMENT_KEY, admin parolini o‘zgartiring.
+# 3) export CADDY_DOMAIN=watch.example.com  (Windows: set CADDY_DOMAIN=...)
+# 4) docker compose -f docker-compose.https.yml up -d --build
+#
+# Ikkala port 80/443 ochiq bo‘lishi kerak.
+
+services:
+  app:
+    build: .
+    image: device-watch-server:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TRUST_PROXY: "1"
+    expose:
+      - "5050"
+    volumes:
+      - device_watch_data:/app/data
+    networks:
+      - web
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      CADDY_DOMAIN: ${CADDY_DOMAIN:?Set CADDY_DOMAIN to your public domain}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - web
+    depends_on:
+      - app
+
+networks:
+  web:
+
+volumes:
+  device_watch_data:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,4 @@
+{
+  "dart.flutterSdkPath": "${workspaceFolder}/tools/flutter",
+  "dart.lineLength": 100
+}

@@ -1,0 +1,18 @@
+# HTTP — tez start (cloudda port 5050 ochiladi yoki orqa reverse proxy qo‘yiladi).
+# Ishga tushirish: cp .env.example .env && sozlang, keyin: docker compose up -d --build
+
+services:
+  app:
+    build: .
+    image: device-watch-server:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+    ports:
+      - "${HOST_PORT:-5050}:5050"
+    volumes:
+      - device_watch_data:/app/data
+
+volumes:
+  device_watch_data:
