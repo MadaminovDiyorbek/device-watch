@@ -3,280 +3,383 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DeviceWatch — mahalliy</title>
+  <title>DeviceWatch — agent</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" crossorigin="anonymous"></script>
   <style>
     :root {
-      --color-text-primary: #1a1a1a;
-      --color-text-secondary: #6b6b6b;
-      --color-background-primary: #fff;
-      --color-background-secondary: #f4f5f7;
-      --color-border-tertiary: #eceef2;
+      --bg: #0f1115;
+      --panel: #171a21;
+      --panel-2: #1c202a;
+      --border: #232736;
+      --text: #e6eaf4;
+      --muted: #97a0b3;
+      --muted2: #b8c0d6;
+      --blue: #2c7be5;
+      --green: #4ce39a;
+      --amber: #ffb020;
+      --purple: #b07cff;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--color-background-secondary); color: var(--color-text-primary); padding: 12px; max-width: 480px; margin: 0 auto; }
-    .screen-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    .app-title { font-size: 15px; font-weight: 600; }
-    .live-badge { font-size: 9px; background: #e1f5ee; color: #0f6e56; padding: 2px 8px; border-radius: 20px; display: flex; align-items: center; gap: 4px; }
-    .live-dot { width: 5px; height: 5px; border-radius: 50%; background: #1d9e75; animation: pulse 1.4s infinite; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: radial-gradient(1200px 600px at 50% -200px, rgba(44,123,229,.18), transparent 70%), var(--bg);
+      color: var(--text);
+      padding: 24px;
+    }
+
+    .window {
+      max-width: 940px;
+      margin: 0 auto;
+      background: rgba(20,22,28,.65);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    }
+    .titlebar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: rgba(23,26,33,.78);
+      border-bottom: 1px solid var(--border);
+    }
+    .dots { display: flex; gap: 6px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #2b2f3d; }
+    .dot.red { background: #ff5f57; }
+    .dot.yellow { background: #febc2e; }
+    .dot.green { background: #28c840; }
+    .title {
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--muted2);
+      margin-left: 4px;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(29,158,117,.14);
+      color: #bff5e3;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .pill .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #1d9e75; animation: pulse 1.4s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-    .device-info-bar { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 8px; }
-    .di-name { font-size: 13px; font-weight: 600; }
-    .di-model { font-size: 10px; color: var(--color-text-secondary); margin-top: 2px; }
-    .di-status { margin-left: auto; font-size: 9px; background: #e1f5ee; color: #0f6e56; padding: 2px 7px; border-radius: 20px; height: fit-content; }
+    .content { padding: 18px; }
 
-    .tab-row { display: flex; border: 0.5px solid var(--color-border-tertiary); border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
-    .tab-btn { flex: 1; font-size: 10px; padding: 6px 0; background: var(--color-background-primary); border: none; cursor: pointer; color: var(--color-text-secondary); border-right: 0.5px solid var(--color-border-tertiary); }
-    .tab-btn:last-child { border-right: none; }
-    .tab-btn.active { background: #e8f2fc; color: #185fa5; font-weight: 600; }
+    .device-bar {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .device-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      color: var(--muted2);
+      font-size: 22px;
+    }
+    .device-name { font-size: 16px; font-weight: 900; }
+    .device-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .badge-online {
+      margin-left: auto;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(29,158,117,.16);
+      border: 1px solid rgba(29,158,117,.35);
+      color: #bff5e3;
+      font-size: 11px;
+      font-weight: 800;
+    }
 
-    .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
-    .metric-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 8px; padding: 8px 10px; }
-    .mc-label { font-size: 9px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 3px; }
-    .mc-val { font-size: 17px; font-weight: 600; }
-    .mc-val.amber { color: #ba7517; }
-    .mc-val.green { color: #1d9e75; }
-    .mc-sub { font-size: 9px; color: var(--color-text-secondary); margin-top: 2px; }
-    .mini-bar { height: 4px; border-radius: 2px; background: #eceef2; margin-top: 4px; overflow: hidden; }
-    .mini-fill { height: 100%; border-radius: 2px; }
-    .fill-amber { background: #ef9f27; }
-    .fill-green { background: #1d9e75; }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 900px) {
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 14px;
+    }
+    .k { font-size: 11px; color: var(--muted); font-weight: 800; letter-spacing: .35px; }
+    .v { font-size: 26px; font-weight: 900; margin-top: 6px; line-height: 1; }
+    .sub { font-size: 12px; color: var(--muted2); margin-top: 6px; }
+    .bar { height: 6px; background: rgba(255,255,255,.06); border-radius: 999px; overflow: hidden; margin-top: 10px; }
+    .fill { height: 100%; border-radius: 999px; }
 
-    .section-title { font-size: 10px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; font-weight: 600; }
-    .chart-area { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
-    .chart-wrap { position: relative; height: 64px; }
+    .v.amber { color: var(--amber); }
+    .v.green { color: var(--green); }
+    .v.blue { color: var(--blue); }
+    .v.purple { color: var(--purple); }
+    .fill.amber { background: var(--amber); }
+    .fill.green { background: var(--green); }
+    .fill.blue { background: var(--blue); }
+    .fill.purple { background: var(--purple); }
 
-    .net-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
-    .net-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 8px; padding: 8px 10px; }
-    .net-dir { font-size: 9px; color: var(--color-text-secondary); margin-bottom: 2px; }
-    .net-speed { font-size: 15px; font-weight: 600; }
-    .net-unit { font-size: 9px; color: var(--color-text-secondary); }
-    .net-total { font-size: 9px; color: var(--color-text-secondary); margin-top: 2px; }
+    .chart-card { margin-bottom: 14px; }
+    .chart-title { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+    .chart-title .k { text-transform: uppercase; }
+    .chart-wrap { position: relative; height: 170px; }
 
-    .cloud-status { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; margin-top: 4px; }
-    .cloud-label { font-size: 10px; color: var(--color-text-secondary); }
-    .cloud-val { font-size: 11px; font-weight: 600; flex: 1; }
-    .cloud-badge { font-size: 9px; background: #e6f1fb; color: #185fa5; padding: 2px 7px; border-radius: 20px; }
+    .net-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1.2fr .8fr 1.1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    @media (max-width: 900px) {
+      .net-grid { grid-template-columns: repeat(2, 1fr); }
+    }
 
-    .sys-wrap { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 8px; padding: 10px 12px; }
-    .sys-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 11px; }
-    .sys-row:last-child { border-bottom: none; }
-    .sys-key { color: var(--color-text-secondary); }
-    .sys-val { font-weight: 500; text-align: right; max-width: 62%; word-break: break-word; }
+    .mini { font-size: 12px; color: var(--muted2); margin-top: 6px; }
+    .ping-good { color: #bff5e3; }
   </style>
 </head>
 <body>
-  <div class="screen-header">
-    <div class="app-title">DeviceWatch</div>
-    <div class="live-badge"><span class="live-dot"></span> Jonli</div>
-  </div>
-
-  <div class="device-info-bar">
-    <div style="font-size:18px;">🖥</div>
-    <div style="flex:1;">
-      <div class="di-name" id="ph-name">—</div>
-      <div class="di-model" id="ph-sub">—</div>
+  <div class="window">
+    <div class="titlebar">
+      <div class="dots">
+        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+      </div>
+      <div class="title" id="win-title">DeviceWatch — PC</div>
+      <div class="pill"><span class="live-dot"></span> Jonli</div>
     </div>
-    <div class="di-status">Online</div>
-  </div>
 
-  <div class="tab-row">
-    <button type="button" class="tab-btn active" data-tab="ph-overview">Ko'rsatkichlar</button>
-    <button type="button" class="tab-btn" data-tab="ph-network">Tarmoq</button>
-    <button type="button" class="tab-btn" data-tab="ph-info">Ma'lumot</button>
-  </div>
+    <div class="content">
+      <div class="device-bar">
+        <div class="device-icon">🖥</div>
+        <div style="min-width:0;">
+          <div class="device-name" id="pc-name">—</div>
+          <div class="device-sub" id="pc-sub">—</div>
+        </div>
+        <div class="badge-online">Online</div>
+      </div>
 
-  <div id="ph-overview">
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="mc-label">CPU</div>
-        <div class="mc-val amber" id="ph-cpu">—</div>
-        <div class="mc-sub" id="ph-cpu-m">—</div>
-        <div class="mini-bar"><div class="mini-fill fill-amber" id="ph-cpu-bar" style="width:0%"></div></div>
+      <div class="grid-4">
+        <div class="card">
+          <div class="k">CPU</div>
+          <div class="v amber" id="pc-cpu">—</div>
+          <div class="sub" id="pc-cpu-m">—</div>
+          <div class="bar"><div class="fill amber" id="pc-cpu-bar" style="width:0%"></div></div>
+        </div>
+        <div class="card">
+          <div class="k">RAM</div>
+          <div class="v green" id="pc-ram">—</div>
+          <div class="sub" id="pc-ram-s">—</div>
+          <div class="bar"><div class="fill green" id="pc-ram-bar" style="width:0%"></div></div>
+        </div>
+        <div class="card">
+          <div class="k">DISK</div>
+          <div class="v blue" id="pc-disk">—</div>
+          <div class="sub" id="pc-disk-s">—</div>
+          <div class="bar"><div class="fill blue" id="pc-disk-bar" style="width:0%"></div></div>
+        </div>
+        <div class="card">
+          <div class="k">HARORAT</div>
+          <div class="v amber" id="pc-temp">—</div>
+          <div class="sub">CPU harorati</div>
+          <div class="bar"><div class="fill amber" id="pc-temp-bar" style="width:0%"></div></div>
+        </div>
       </div>
-      <div class="metric-card">
-        <div class="mc-label">RAM</div>
-        <div class="mc-val green" id="ph-ram">—</div>
-        <div class="mc-sub" id="ph-ram-s">—</div>
-        <div class="mini-bar"><div class="mini-fill fill-green" id="ph-ram-bar" style="width:0%"></div></div>
+
+      <div class="card chart-card">
+        <div class="chart-title">
+          <div class="k">CPU TARIXI</div>
+          <div class="mini" id="sync-line">Oxirgi sinx.: —</div>
+        </div>
+        <div class="chart-wrap"><canvas id="cpu-chart"></canvas></div>
       </div>
-      <div class="metric-card">
-        <div class="mc-label">Disk</div>
-        <div class="mc-val green" id="ph-disk">—</div>
-        <div class="mc-sub" id="ph-disk-s">—</div>
-        <div class="mini-bar"><div class="mini-fill fill-green" id="ph-disk-bar" style="width:0%"></div></div>
-      </div>
-      <div class="metric-card">
-        <div class="mc-label">Harorat</div>
-        <div class="mc-val amber" id="ph-temp">—</div>
-        <div class="mc-sub">CPU</div>
-        <div class="mini-bar"><div class="mini-fill fill-amber" id="ph-temp-bar" style="width:0%"></div></div>
+
+      <div class="card">
+        <div class="k" style="text-transform:uppercase;">TARMOQ TRAFIGI</div>
+
+        <div class="net-grid">
+          <div class="card" style="background:rgba(28,32,42,.55);">
+            <div class="k">↑ Yuklash tezligi</div>
+            <div class="v blue"><span id="up-now">0</span> <span style="font-size:14px;font-weight:800;color:var(--muted2);">Mb/s</span></div>
+            <div class="mini">Jami: <span id="up-tot">0</span> GB</div>
+          </div>
+          <div class="card" style="background:rgba(28,32,42,.55);">
+            <div class="k">↓ Yuklab olish</div>
+            <div class="v green"><span id="down-now">0</span> <span style="font-size:14px;font-weight:800;color:var(--muted2);">Mb/s</span></div>
+            <div class="mini">Jami: <span id="down-tot">0</span> GB</div>
+          </div>
+          <div class="card" style="background:rgba(28,32,42,.55);">
+            <div class="k">Ping</div>
+            <div class="v purple"><span id="ping">—</span> <span style="font-size:14px;font-weight:800;color:var(--muted2);">ms</span></div>
+            <div class="mini ping-good" id="ping-qual">—</div>
+          </div>
+          <div class="card" style="background:rgba(28,32,42,.55);">
+            <div class="k">Cloud sinx.</div>
+            <div class="v" style="font-size:18px;color:var(--muted2);font-weight:900;" id="cloud-host">—</div>
+            <div class="mini">Har <span id="hb-sec">5</span> soniyada</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="k" style="margin-bottom:10px;">TRAFIK GRAFIGI</div>
+          <div class="chart-wrap" style="height:160px;"><canvas id="net-chart"></canvas></div>
+        </div>
       </div>
     </div>
-    <div class="section-title">CPU % (so'nggi)</div>
-    <div class="chart-area"><div class="chart-wrap"><canvas id="ph-chart"></canvas></div></div>
-  </div>
-
-  <div id="ph-network" style="display:none;">
-    <div class="net-row">
-      <div class="net-card">
-        <div class="net-dir">↑ Yuklash</div>
-        <div class="net-speed"><span id="ph-up">0</span> <span class="net-unit">Mb/s</span></div>
-        <div class="net-total">Sessiya: <span id="ph-up-tot">0</span> GB</div>
-      </div>
-      <div class="net-card">
-        <div class="net-dir">↓ Yuklab olish</div>
-        <div class="net-speed"><span id="ph-down">0</span> <span class="net-unit">Mb/s</span></div>
-        <div class="net-total">Sessiya: <span id="ph-down-tot">0</span> GB</div>
-      </div>
-    </div>
-    <div class="section-title">Trafik (Mb/s)</div>
-    <div class="chart-area"><div class="chart-wrap"><canvas id="ph-net-chart"></canvas></div></div>
-    <div class="cloud-status">
-      <div style="font-size:16px;">☁</div>
-      <div style="flex:1;">
-        <div class="cloud-label">Cloud serverga sinx.</div>
-        <div class="cloud-val" id="cloud-line">Oxirgi: —</div>
-      </div>
-      <div class="cloud-badge">Aktiv</div>
-    </div>
-  </div>
-
-  <div id="ph-info" style="display:none;">
-    <div class="sys-wrap" id="sys-rows"></div>
   </div>
 
   <script>
-    const cpuHist = Array(20).fill(0);
-    const upHist = Array(20).fill(0);
-    const dnHist = Array(20).fill(0);
-    let phChart, phNetChart;
+    const cpuHist = Array(30).fill(0);
+    const upHist = Array(30).fill(0);
+    const dnHist = Array(30).fill(0);
+    let cpuChart, netChart;
 
-    const chartOpts = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { display: false },
-        y: { min: 0, max: 100, ticks: { font: { size: 8 }, color: '#888' }, grid: { color: 'rgba(0,0,0,.06)' } },
-      },
-      elements: { point: { radius: 0 } },
-    };
-
-    function buildPhChart() {
-      const ctx = document.getElementById('ph-chart');
-      if (!ctx) return;
-      if (phChart) phChart.destroy();
-      phChart = new Chart(ctx, {
-        type: 'line',
-        data: { labels: cpuHist.map(() => ''), datasets: [{ data: [...cpuHist], borderColor: '#ef9f27', borderWidth: 1.5, fill: true, backgroundColor: 'rgba(239,159,39,.1)', tension: 0.4 }] },
-        options: chartOpts,
-      });
+    function makeChartBase({ maxY = 100 } = {}) {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { display: false },
+          y: {
+            min: 0,
+            max: maxY,
+            ticks: { color: 'rgba(184,192,214,.7)', font: { size: 10 } },
+            grid: { color: 'rgba(255,255,255,.06)' },
+          },
+        },
+        elements: { point: { radius: 0 } },
+      };
     }
 
-    function buildPhNetChart() {
-      const ctx = document.getElementById('ph-net-chart');
-      if (!ctx || phNetChart) return;
-      phNetChart = new Chart(ctx, {
+    function buildCharts() {
+      const cpuCtx = document.getElementById('cpu-chart');
+      if (!cpuCtx) return;
+      if (cpuChart) cpuChart.destroy();
+      cpuChart = new Chart(cpuCtx, {
+        type: 'line',
+        data: {
+          labels: cpuHist.map(() => ''),
+          datasets: [
+            {
+              data: [...cpuHist],
+              borderColor: '#ffb020',
+              borderWidth: 2,
+              fill: true,
+              backgroundColor: 'rgba(255,176,32,.12)',
+              tension: 0.38,
+            },
+          ],
+        },
+        options: makeChartBase({ maxY: 100 }),
+      });
+
+      const netCtx = document.getElementById('net-chart');
+      if (!netCtx) return;
+      if (netChart) netChart.destroy();
+      netChart = new Chart(netCtx, {
         type: 'line',
         data: {
           labels: upHist.map(() => ''),
           datasets: [
-            { data: [...dnHist], borderColor: '#1d9e75', borderWidth: 1.5, tension: 0.4 },
-            { data: [...upHist], borderColor: '#378add', borderWidth: 1.5, tension: 0.4 },
+            { data: [...dnHist], borderColor: '#4ce39a', borderWidth: 2, tension: 0.38 },
+            { data: [...upHist], borderColor: '#2c7be5', borderWidth: 2, tension: 0.38 },
           ],
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: { x: { display: false }, y: { ticks: { font: { size: 8 }, color: '#888' }, grid: { color: 'rgba(0,0,0,.06)' } } },
-          elements: { point: { radius: 0 } },
-        },
+        options: makeChartBase({ maxY: 100 }),
       });
     }
 
-    document.querySelectorAll('.tab-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        const id = btn.getAttribute('data-tab');
-        ['ph-overview', 'ph-network', 'ph-info'].forEach((x) => {
-          document.getElementById(x).style.display = x === id ? '' : 'none';
-        });
-        if (id === 'ph-network') setTimeout(buildPhNetChart, 40);
-      });
-    });
+    buildCharts();
 
-    buildPhChart();
-
-    function esc(s) {
-      return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    }
-
-    function fillInfo(s) {
-      const sp = s.specs || {};
-      const rows = [
-        ['Protsessor', sp.cpu || s.cpuModel || '—'],
-        ['RAM', sp.ram || '—'],
-        ['Xotira', sp.disk || '—'],
-        ['OS', sp.os || '—'],
-        ['IP', sp.ip || '—'],
-        ['Joylashuv', sp.location || '—'],
-        ['Oxirgi sinx.', s.at ? new Date(s.at).toLocaleString('uz-UZ') : '—'],
-      ];
-      document.getElementById('sys-rows').innerHTML = rows
-        .map(([k, v]) => `<div class="sys-row"><span class="sys-key">${esc(k)}</span><span class="sys-val">${esc(v)}</span></div>`)
-        .join('');
+    function pingQuality(ms) {
+      if (ms == null || ms === '—') return '—';
+      const n = Number(ms);
+      if (!Number.isFinite(n)) return '—';
+      if (n <= 30) return 'Ajoyib';
+      if (n <= 80) return 'Yaxshi';
+      if (n <= 150) return 'O\'rtacha';
+      return 'Sekin';
     }
 
     async function poll() {
       try {
         const r = await fetch('/api/local/stats');
         const s = await r.json();
+        const at = s.at ? new Date(s.at) : null;
+        document.getElementById('sync-line').textContent = `Oxirgi sinx.: ${at ? at.toLocaleTimeString('uz-UZ') : '—'}`;
+
+        const serverHost = (s.serverUrl ? new URL(s.serverUrl).host : '') || '';
+        document.getElementById('cloud-host').textContent = serverHost ? serverHost : 'Cloud';
+        document.getElementById('hb-sec').textContent = String(s.heartbeatSec || 5);
+
+        const p = s.pingMs != null ? s.pingMs : '—';
+        document.getElementById('ping').textContent = p;
+        document.getElementById('ping-qual').textContent = pingQuality(p);
+
         if (s.ok === false) return;
 
-        document.getElementById('ph-name').textContent = s.hostname || '—';
-        document.getElementById('ph-sub').textContent = (s.osString || '').split(' / ').slice(1).join(' / ') || s.osString || '—';
+        const host = s.hostname || 'PC';
+        document.getElementById('pc-name').textContent = host;
+        document.getElementById('win-title').textContent = `DeviceWatch — ${host}`;
+        document.getElementById('pc-sub').textContent =
+          (s.cpuModel ? `${s.cpuModel} • ` : '') + (s.osString || '—');
 
         const cpu = Math.round(s.cpuUsage || 0);
-        document.getElementById('ph-cpu').textContent = cpu + '%';
-        document.getElementById('ph-cpu-m').textContent = s.cpuModel || '';
-        document.getElementById('ph-cpu-bar').style.width = cpu + '%';
+        document.getElementById('pc-cpu').textContent = cpu + '%';
+        document.getElementById('pc-cpu-m').textContent = s.cpuModel || '—';
+        document.getElementById('pc-cpu-bar').style.width = cpu + '%';
 
         const rp = Math.round(s.ramPercent || 0);
-        document.getElementById('ph-ram').textContent = rp + '%';
-        document.getElementById('ph-ram-s').textContent = (s.ramUsedGb != null ? s.ramUsedGb : '—') + ' / ' + (s.ramTotalGb != null ? s.ramTotalGb : '—') + ' GB';
-        document.getElementById('ph-ram-bar').style.width = rp + '%';
+        document.getElementById('pc-ram').textContent = rp + '%';
+        document.getElementById('pc-ram-s').textContent =
+          (s.ramUsedGb != null ? Number(s.ramUsedGb).toFixed(1) : '—') + ' / ' + (s.ramTotalGb != null ? Number(s.ramTotalGb).toFixed(0) : '—') + ' GB';
+        document.getElementById('pc-ram-bar').style.width = rp + '%';
 
         const dp = Math.round(s.diskPercent || 0);
-        document.getElementById('ph-disk').textContent = dp + '%';
-        document.getElementById('ph-disk-s').textContent = (s.diskUsedGb != null ? s.diskUsedGb : '—') + ' / ' + (s.diskTotalGb != null ? s.diskTotalGb : '—') + ' GB';
-        document.getElementById('ph-disk-bar').style.width = dp + '%';
+        document.getElementById('pc-disk').textContent = dp + '%';
+        document.getElementById('pc-disk-s').textContent =
+          (s.diskUsedGb != null ? Number(s.diskUsedGb).toFixed(0) : '—') + ' / ' + (s.diskTotalGb != null ? Number(s.diskTotalGb).toFixed(0) : '—') + ' GB SSD';
+        document.getElementById('pc-disk-bar').style.width = dp + '%';
 
         const t = s.temperatureCpu;
         if (t != null && !Number.isNaN(t)) {
-          document.getElementById('ph-temp').textContent = Math.round(t) + '°C';
-          document.getElementById('ph-temp-bar').style.width = Math.min(100, (t / 95) * 100) + '%';
+          document.getElementById('pc-temp').textContent = Math.round(t) + '°C';
+          document.getElementById('pc-temp-bar').style.width = Math.min(100, (t / 95) * 100) + '%';
         } else {
-          document.getElementById('ph-temp').textContent = '—';
-          document.getElementById('ph-temp-bar').style.width = '0%';
+          document.getElementById('pc-temp').textContent = '—';
+          document.getElementById('pc-temp-bar').style.width = '0%';
         }
 
-        document.getElementById('ph-up').textContent = s.netUpMbps != null ? s.netUpMbps.toFixed(1) : '0';
-        document.getElementById('ph-down').textContent = s.netDownMbps != null ? s.netDownMbps.toFixed(1) : '0';
-        document.getElementById('ph-up-tot').textContent = s.netTotalUpGb != null ? Number(s.netTotalUpGb).toFixed(2) : '0';
-        document.getElementById('ph-down-tot').textContent = s.netTotalDownGb != null ? Number(s.netTotalDownGb).toFixed(2) : '0';
-
-        document.getElementById('cloud-line').textContent = s.at ? new Date(s.at).toLocaleTimeString('uz-UZ') : '—';
+        document.getElementById('up-now').textContent = s.netUpMbps != null ? Number(s.netUpMbps).toFixed(1) : '0';
+        document.getElementById('down-now').textContent = s.netDownMbps != null ? Number(s.netDownMbps).toFixed(1) : '0';
+        document.getElementById('up-tot').textContent = s.netTotalUpGb != null ? Number(s.netTotalUpGb).toFixed(2) : '0';
+        document.getElementById('down-tot').textContent = s.netTotalDownGb != null ? Number(s.netTotalDownGb).toFixed(2) : '0';
 
         cpuHist.push(cpu);
         cpuHist.shift();
-        if (phChart) {
-          phChart.data.datasets[0].data = [...cpuHist];
-          phChart.update('none');
-        }
+        if (cpuChart) { cpuChart.data.datasets[0].data = [...cpuHist]; cpuChart.update('none'); }
 
         const up = s.netUpMbps != null ? s.netUpMbps : 0;
         const dn = s.netDownMbps != null ? s.netDownMbps : 0;
@@ -285,13 +388,11 @@
         dnHist.push(Math.min(100, (dn / scale) * 100));
         upHist.shift();
         dnHist.shift();
-        if (phNetChart) {
-          phNetChart.data.datasets[0].data = [...dnHist];
-          phNetChart.data.datasets[1].data = [...upHist];
-          phNetChart.update('none');
+        if (netChart) {
+          netChart.data.datasets[0].data = [...dnHist];
+          netChart.data.datasets[1].data = [...upHist];
+          netChart.update('none');
         }
-
-        fillInfo(s);
       } catch (_) {}
     }
 

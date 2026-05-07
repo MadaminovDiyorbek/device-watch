@@ -5,6 +5,7 @@ const express = require('express');
 const { collectMetrics } = require('./metrics');
 
 const os = require('os');
+const { exec } = require('child_process');
 
 function normalizeUrl(u) {
   const t = String(u || '').trim();
@@ -14,6 +15,12 @@ function normalizeUrl(u) {
 
 function getConfigDir() {
   if (process.env.DEVICEWATCH_DIR) return path.resolve(process.env.DEVICEWATCH_DIR);
+  // Prefer next to exe (portable install) if writable.
+  const exeDir = path.dirname(process.execPath);
+  try {
+    fs.accessSync(exeDir, fs.constants.W_OK);
+    return exeDir;
+  } catch {}
   const appData = process.env.APPDATA;
   if (appData) return path.join(appData, 'DeviceWatch');
   return path.join(os.homedir(), '.devicewatch');
@@ -52,6 +59,10 @@ const HEARTBEAT_SEC = Math.max(3, Number(process.env.HEARTBEAT_SEC) || 5);
 let latest = null;
 let sessionUpGb = 0;
 let sessionDownGb = 0;
+let lastPingMs = null;
+
+const ENV_SERVER_URL = normalizeUrl(process.env.SERVER_URL || '');
+const ENV_ENROLLMENT_KEY = String(process.env.ENROLLMENT_KEY || '');
 
 function loadConfig() {
   if (!fs.existsSync(CONFIG_PATH)) return null;
@@ -70,8 +81,25 @@ function saveConfig(cfg) {
 function applyConfigOverrides() {
   const cfg = loadConfig();
   if (!cfg) return;
-  if (cfg.serverUrl) SERVER_URL = normalizeUrl(cfg.serverUrl);
-  if (cfg.enrollmentKey) ENROLLMENT_KEY = String(cfg.enrollmentKey);
+  // ENV (or .env) should override config when explicitly provided.
+  // This avoids being "stuck" on an old localhost value after packaging.
+  if (!ENV_SERVER_URL && cfg.serverUrl) SERVER_URL = normalizeUrl(cfg.serverUrl);
+  if (!ENV_ENROLLMENT_KEY && cfg.enrollmentKey) ENROLLMENT_KEY = String(cfg.enrollmentKey);
+}
+
+async function pingMs() {
+  const sw = Date.now();
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 4000);
+  try {
+    const r = await fetch(`${SERVER_URL}/`, { signal: ctrl.signal });
+    if (!r.ok) return null;
+    return Date.now() - sw;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 async function enroll(name) {
@@ -126,7 +154,15 @@ async function sendHeartbeat(token, payload) {
 function startLocalUi() {
   const app = express();
   app.get('/api/local/stats', (_req, res) => {
-    res.json(latest || { ok: false, message: 'Metrikalar hali yoq' });
+    res.json(
+      latest || {
+        ok: false,
+        message: 'Metrikalar hali yoq',
+        serverUrl: SERVER_URL,
+        heartbeatSec: HEARTBEAT_SEC,
+        pingMs: lastPingMs,
+      },
+    );
   });
   app.use(express.static(PUBLIC_DIR));
   app.listen(LOCAL_UI_PORT, '127.0.0.1', () => {
@@ -134,10 +170,23 @@ function startLocalUi() {
   });
 }
 
+function openLocalUi() {
+  const url = `http://127.0.0.1:${LOCAL_UI_PORT}/`;
+  if (process.platform === 'win32') {
+    // Open as a minimal "app window" (no tabs) via Edge.
+    exec(`cmd /c start "" msedge --app="${url}"`);
+  } else if (process.platform === 'darwin') {
+    exec(`open "${url}"`);
+  } else {
+    exec(`xdg-open "${url}"`);
+  }
+}
+
 async function loop() {
   const token = await ensureToken();
   async function tick() {
     try {
+      lastPingMs = await pingMs();
       const m = await collectMetrics({ location: DEVICE_LOCATION, sessionUpGb, sessionDownGb });
       const upMb = (m.netUpMbps * HEARTBEAT_SEC) / 8;
       const downMb = (m.netDownMbps * HEARTBEAT_SEC) / 8;
@@ -145,7 +194,13 @@ async function loop() {
       sessionDownGb += downMb / 1024;
       m.netTotalUpGb = Number(sessionUpGb.toFixed(3));
       m.netTotalDownGb = Number(sessionDownGb.toFixed(3));
-      latest = { ...m, at: new Date().toISOString() };
+      latest = {
+        ...m,
+        at: new Date().toISOString(),
+        serverUrl: SERVER_URL,
+        heartbeatSec: HEARTBEAT_SEC,
+        pingMs: lastPingMs,
+      };
       await sendHeartbeat(token, latest);
     } catch (e) {
       console.error('[agent]', e.message || e);
@@ -159,6 +214,7 @@ async function loop() {
   applyConfigOverrides();
   console.log('[agent] Cloud server:', SERVER_URL);
   startLocalUi();
+  openLocalUi();
   try {
     await loop();
   } catch (e) {

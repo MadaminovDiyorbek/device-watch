@@ -11,9 +11,17 @@ class DeviceWatchApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'DeviceWatch',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF185FA5)),
+      themeMode: ThemeMode.dark,
+      theme: ThemeData.light(useMaterial3: true),
+      darkTheme: ThemeData(
         useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF2C7BE5),
+          brightness: Brightness.dark,
+        ),
+        scaffoldBackgroundColor: const Color(0xFF0F1115),
+        cardColor: const Color(0xFF171A21),
       ),
       home: FutureBuilder<Prefs>(
         future: Prefs.load(),

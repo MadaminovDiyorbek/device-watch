@@ -12,6 +12,19 @@ class CloudService {
     return t.endsWith('/') ? t.substring(0, t.length - 1) : t;
   }
 
+  Future<int?> pingMs() async {
+    final sw = Stopwatch()..start();
+    try {
+      final r = await http.get(Uri.parse('$_root/')).timeout(const Duration(seconds: 4));
+      if (r.statusCode < 200 || r.statusCode >= 500) return null;
+      return sw.elapsedMilliseconds;
+    } catch (_) {
+      return null;
+    } finally {
+      sw.stop();
+    }
+  }
+
   Future<String> enroll({
     required String enrollmentKey,
     required String name,

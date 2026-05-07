@@ -17,6 +17,7 @@ dependencies:
   connectivity_plus: ^6.1.1
   network_info_plus: ^6.1.4
   system_info2: ^4.1.0
+  fl_chart: ^0.69.0
 
 dev_dependencies:
   flutter_test:
