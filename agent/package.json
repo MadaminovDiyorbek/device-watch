@@ -6,7 +6,9 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "build:win": "npm run build:win:prep && pkg -t node18-win-x64 -o dist/device-watch-agent.exe src/index.js",
+    "build:win:prep": "node scripts/copy-public.js && powershell -ExecutionPolicy Bypass -File scripts/download-pkg-base.ps1"
   },
   "engines": {
     "node": ">=18"
@@ -15,5 +17,13 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "systeminformation": "^5.23.5"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "assets": [
+      "public/**/*"
+    ]
   }
 }

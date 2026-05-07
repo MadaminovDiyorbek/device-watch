@@ -6,6 +6,15 @@ const _kName = 'dw_device_name';
 const _kType = 'dw_device_type';
 const _kToken = 'dw_device_token';
 
+const _defaultServerUrl = String.fromEnvironment(
+  'DW_SERVER_URL',
+  defaultValue: 'http://10.0.2.2:5050',
+);
+const _defaultEnrollKey = String.fromEnvironment(
+  'DW_ENROLLMENT_KEY',
+  defaultValue: 'demo-enroll-secret',
+);
+
 class Prefs {
   Prefs({
     required this.serverUrl,
@@ -26,8 +35,8 @@ class Prefs {
   static Future<Prefs> load() async {
     final sp = await SharedPreferences.getInstance();
     return Prefs(
-      serverUrl: sp.getString(_kServer) ?? 'http://10.0.2.2:5050',
-      enrollmentKey: sp.getString(_kEnroll) ?? 'demo-enroll-secret',
+      serverUrl: sp.getString(_kServer) ?? _defaultServerUrl,
+      enrollmentKey: sp.getString(_kEnroll) ?? _defaultEnrollKey,
       deviceName: sp.getString(_kName) ?? '',
       deviceType: sp.getString(_kType) ?? 'phone',
       deviceToken: sp.getString(_kToken),

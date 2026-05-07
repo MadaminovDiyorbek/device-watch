@@ -4,16 +4,50 @@ const path = require('path');
 const express = require('express');
 const { collectMetrics } = require('./metrics');
 
-const SERVER_URL = (process.env.SERVER_URL || 'http://localhost:5050').replace(/\/$/, '');
-const ENROLLMENT_KEY = process.env.ENROLLMENT_KEY || 'demo-enroll-secret';
+const os = require('os');
+
+function normalizeUrl(u) {
+  const t = String(u || '').trim();
+  if (!t) return '';
+  return t.endsWith('/') ? t.slice(0, -1) : t;
+}
+
+function getConfigDir() {
+  if (process.env.DEVICEWATCH_DIR) return path.resolve(process.env.DEVICEWATCH_DIR);
+  const appData = process.env.APPDATA;
+  if (appData) return path.join(appData, 'DeviceWatch');
+  return path.join(os.homedir(), '.devicewatch');
+}
+
+const CONFIG_DIR = getConfigDir();
+const CONFIG_PATH = path.join(CONFIG_DIR, 'agent-config.json');
+
+function getPublicDir() {
+  // Prefer external folder next to exe (works for packaged .exe).
+  const exeDir = path.dirname(process.execPath);
+  const ext = path.join(exeDir, 'public');
+  if (fs.existsSync(ext)) return ext;
+  // Fallback to repo layout (node run).
+  return path.join(__dirname, '..', 'public');
+}
+
+const PUBLIC_DIR = getPublicDir();
+
+function getServerUrlFromEnv() {
+  return normalizeUrl(process.env.SERVER_URL || 'http://localhost:5050');
+}
+
+function getEnrollmentKeyFromEnv() {
+  return String(process.env.ENROLLMENT_KEY || 'demo-enroll-secret');
+}
+
+let SERVER_URL = getServerUrlFromEnv();
+let ENROLLMENT_KEY = getEnrollmentKeyFromEnv();
 const DEVICE_NAME_ENV = process.env.DEVICE_NAME || '';
 const DEVICE_TYPE = process.env.DEVICE_TYPE || 'pc';
 const DEVICE_LOCATION = process.env.DEVICE_LOCATION || '';
 const LOCAL_UI_PORT = Number(process.env.LOCAL_UI_PORT) || 47100;
 const HEARTBEAT_SEC = Math.max(3, Number(process.env.HEARTBEAT_SEC) || 5);
-
-const CONFIG_PATH = path.join(__dirname, '..', 'agent-config.json');
-const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 let latest = null;
 let sessionUpGb = 0;
@@ -29,7 +63,15 @@ function loadConfig() {
 }
 
 function saveConfig(cfg) {
+  fs.mkdirSync(CONFIG_DIR, { recursive: true });
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf8');
+}
+
+function applyConfigOverrides() {
+  const cfg = loadConfig();
+  if (!cfg) return;
+  if (cfg.serverUrl) SERVER_URL = normalizeUrl(cfg.serverUrl);
+  if (cfg.enrollmentKey) ENROLLMENT_KEY = String(cfg.enrollmentKey);
 }
 
 async function enroll(name) {
@@ -49,7 +91,12 @@ async function enroll(name) {
     throw new Error(`Enroll xato ${r.status}: ${t}`);
   }
   const data = await r.json();
-  saveConfig({ deviceToken: data.deviceToken, deviceId: data.deviceId, serverUrl: SERVER_URL });
+  saveConfig({
+    deviceToken: data.deviceToken,
+    deviceId: data.deviceId,
+    serverUrl: SERVER_URL,
+    enrollmentKey: ENROLLMENT_KEY,
+  });
   console.log('[agent] Ro‘yxatdan o‘tdi. agent-config.json saqlandi.');
   return data.deviceToken;
 }
@@ -57,7 +104,6 @@ async function enroll(name) {
 async function ensureToken() {
   let cfg = loadConfig();
   if (cfg?.deviceToken) return cfg.deviceToken;
-  const os = require('os');
   const name = DEVICE_NAME_ENV || os.hostname() || 'Qurilma';
   return enroll(name);
 }
@@ -110,6 +156,7 @@ async function loop() {
 }
 
 (async () => {
+  applyConfigOverrides();
   console.log('[agent] Cloud server:', SERVER_URL);
   startLocalUi();
   try {
