@@ -1,6 +1,6 @@
-require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config({ path: path.join(path.dirname(process.execPath), '.env') });
 const express = require('express');
 const { collectMetrics } = require('./metrics');
 
