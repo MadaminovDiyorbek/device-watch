@@ -16,9 +16,11 @@ const enrollmentKey = String(
 
 if (!serverUrl || !enrollmentKey) {
   console.error(
-    '[write-cloud-defaults] AGENT_SERVER_URL va AGENT_ENROLLMENT_KEY majburiy.\n' +
-      '  GitHub: Settings → Secrets and variables → Actions → repository secrets.\n' +
-      '  Mahalliy pkg build: PowerShellda ikkalasini export qiling, keyin `npm run build:win`.',
+    '[write-cloud-defaults] Cloud URL va enrollment kalit majburiy (hozirgi holat):',
+    { serverUrl: serverUrl ? '(bor)' : 'YO‘Q', enrollmentKey: enrollmentKey ? '(bor)' : 'YO‘Q' },
+    '\n  GitHub: Repository secrets → AGENT_SERVER_URL, AGENT_ENROLLMENT_KEY\n' +
+      '  yoki “Run workflow”da server_url / enrollment_key maydonlarini to‘ldiring.\n' +
+      '  Mahalliy: $env:AGENT_SERVER_URL=...; $env:AGENT_ENROLLMENT_KEY=...; npm run build:win',
   );
   process.exit(1);
 }

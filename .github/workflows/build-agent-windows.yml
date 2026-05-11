@@ -2,6 +2,15 @@ name: Build Agent (Windows EXE)
 
 on:
   workflow_dispatch:
+    inputs:
+      server_url:
+        description: "Cloud SERVER_URL (faqat repo Secrets bo‘lmasa to‘ldiring)"
+        required: false
+        default: ""
+      enrollment_key:
+        description: "ENROLLMENT_KEY (faqat repo Secrets bo‘lmasa)"
+        required: false
+        default: ""
 
 jobs:
   build:
@@ -25,15 +34,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # EXE foydalanuvchisi hech qanday .env yozmaydi — cloud URL va enrollment kalit shu qadamda EXE ichiga qotadi.
-      # GitHub: Settings → Secrets and variables → Actions → Repository secrets:
-      #   AGENT_SERVER_URL   (masalan https://device-watch-server.onrender.com)
-      #   AGENT_ENROLLMENT_KEY  (Render ENROLLMENT_KEY bilan bir xil)
+      # EXE ichiga cloud URL + enrollment kalit qotadi. Birinchi navbatda repo Secrets ishlatiladi;
+      # bo‘lmasa — “Run workflow” formidagi ixtiyoriy maydonlar.
+      # Doimiy: Settings → Secrets → AGENT_SERVER_URL, AGENT_ENROLLMENT_KEY
       - name: Embed cloud defaults for packaged EXE
-        env:
-          AGENT_SERVER_URL: ${{ secrets.AGENT_SERVER_URL }}
-          AGENT_ENROLLMENT_KEY: ${{ secrets.AGENT_ENROLLMENT_KEY }}
-        run: node scripts/write-cloud-defaults.js
+        shell: pwsh
+        run: |
+          $u = "${{ secrets.AGENT_SERVER_URL }}"
+          $k = "${{ secrets.AGENT_ENROLLMENT_KEY }}"
+          if ([string]::IsNullOrWhiteSpace($u)) { $u = "${{ github.event.inputs.server_url }}" }
+          if ([string]::IsNullOrWhiteSpace($k)) { $k = "${{ github.event.inputs.enrollment_key }}" }
+          $env:AGENT_SERVER_URL = $u.Trim()
+          $env:AGENT_ENROLLMENT_KEY = $k.Trim()
+          node scripts/write-cloud-defaults.js
 
       - name: Build EXE
         run: npm run build:win
