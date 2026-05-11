@@ -37,7 +37,11 @@ jobs:
       # EXE ichiga cloud URL + enrollment kalit qotadi. Birinchi navbatda repo Secrets ishlatiladi;
       # bo‘lmasa — “Run workflow” formidagi ixtiyoriy maydonlar.
       # Doimiy: Settings → Secrets → AGENT_SERVER_URL, AGENT_ENROLLMENT_KEY
-      - name: Embed cloud defaults for packaged EXE
+      #
+      # MUHIM: `npm run build:win` ichidagi `build:win:prep` yana write-cloud-defaults ni chaqiradi.
+      # Har bir `run` qadami alohida shell — shuning uchun secret/env shu qadamda o‘rnatilib,
+      # darhol build ishlatiladi (aks holda keyingi qadamda env bo‘sh qolardi).
+      - name: Embed cloud defaults and build EXE
         shell: pwsh
         run: |
           $u = "${{ secrets.AGENT_SERVER_URL }}"
@@ -47,9 +51,7 @@ jobs:
           $env:AGENT_SERVER_URL = $u.Trim()
           $env:AGENT_ENROLLMENT_KEY = $k.Trim()
           node scripts/write-cloud-defaults.js
-
-      - name: Build EXE
-        run: npm run build:win
+          npm run build:win
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
