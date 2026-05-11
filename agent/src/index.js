@@ -1,6 +1,22 @@
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config({ path: path.join(path.dirname(process.execPath), '.env') });
+
+function isPackagedAgent() {
+  if (process.pkg) return true;
+  const p = String(process.execPath || '').toLowerCase();
+  return p.endsWith('device-watch-agent.exe');
+}
+
+(function loadDotenv() {
+  const exeDir = path.dirname(process.execPath);
+  if (isPackagedAgent()) {
+    // Ixtiyoriy override: EXE yonida `.env` bo‘lsa (odatda kerak emas — cloud EXE ichida).
+    require('dotenv').config({ path: path.join(exeDir, '.env'), override: true });
+  } else {
+    require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+  }
+})();
+
 const express = require('express');
 const { collectMetrics } = require('./metrics');
 
@@ -12,6 +28,23 @@ function normalizeUrl(u) {
   if (!t) return '';
   return t.endsWith('/') ? t.slice(0, -1) : t;
 }
+
+/** `pkg` buildda `scripts/write-cloud-defaults.js` yozadi — foydalanuvchi hech narsa sozlamaydi. */
+function readBundledCloudDefaults() {
+  try {
+    const p = path.join(__dirname, 'cloud-defaults.json');
+    if (!fs.existsSync(p)) return null;
+    const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+    return {
+      serverUrl: normalizeUrl(j.serverUrl || ''),
+      enrollmentKey: String(j.enrollmentKey || '').trim(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+const bundledCloud = readBundledCloudDefaults();
 
 function getConfigDir() {
   if (process.env.DEVICEWATCH_DIR) return path.resolve(process.env.DEVICEWATCH_DIR);
@@ -40,16 +73,24 @@ function getPublicDir() {
 
 const PUBLIC_DIR = getPublicDir();
 
-function getServerUrlFromEnv() {
-  return normalizeUrl(process.env.SERVER_URL || 'http://localhost:5050');
+function resolveServerUrl() {
+  return normalizeUrl(
+    process.env.SERVER_URL ||
+      bundledCloud?.serverUrl ||
+      'http://localhost:5050',
+  );
 }
 
-function getEnrollmentKeyFromEnv() {
-  return String(process.env.ENROLLMENT_KEY || 'demo-enroll-secret');
+function resolveEnrollmentKey() {
+  return String(
+    process.env.ENROLLMENT_KEY ||
+      bundledCloud?.enrollmentKey ||
+      'demo-enroll-secret',
+  ).trim();
 }
 
-let SERVER_URL = getServerUrlFromEnv();
-let ENROLLMENT_KEY = getEnrollmentKeyFromEnv();
+let SERVER_URL = resolveServerUrl();
+let ENROLLMENT_KEY = resolveEnrollmentKey();
 const DEVICE_NAME_ENV = process.env.DEVICE_NAME || '';
 const DEVICE_TYPE = process.env.DEVICE_TYPE || 'pc';
 const DEVICE_LOCATION = process.env.DEVICE_LOCATION || '';
@@ -81,10 +122,14 @@ function saveConfig(cfg) {
 function applyConfigOverrides() {
   const cfg = loadConfig();
   if (!cfg) return;
-  // ENV (or .env) should override config when explicitly provided.
-  // This avoids being "stuck" on an old localhost value after packaging.
-  if (!ENV_SERVER_URL && cfg.serverUrl) SERVER_URL = normalizeUrl(cfg.serverUrl);
-  if (!ENV_ENROLLMENT_KEY && cfg.enrollmentKey) ENROLLMENT_KEY = String(cfg.enrollmentKey);
+  // Rasmiy EXE: cloud URL/kalit EXE ichida — eski agent-config.json dagi localhost ustidan chiqmaydi.
+  const pinned = isPackagedAgent() && !!bundledCloud?.serverUrl;
+  if (!ENV_SERVER_URL && !pinned && cfg.serverUrl) {
+    SERVER_URL = normalizeUrl(cfg.serverUrl);
+  }
+  if (!ENV_ENROLLMENT_KEY && !pinned && cfg.enrollmentKey) {
+    ENROLLMENT_KEY = String(cfg.enrollmentKey);
+  }
 }
 
 async function pingMs() {
@@ -130,8 +175,12 @@ async function enroll(name) {
 }
 
 async function ensureToken() {
-  let cfg = loadConfig();
-  if (cfg?.deviceToken) return cfg.deviceToken;
+  const cfg = loadConfig();
+  if (cfg?.deviceToken) {
+    const savedServer = cfg.serverUrl ? normalizeUrl(cfg.serverUrl) : '';
+    if (!savedServer || savedServer === SERVER_URL) return cfg.deviceToken;
+    console.log('[agent] Saqlangan token boshqa serverga tegishli — cloud bilan qayta ro‘yxatdan o‘tilyapti.');
+  }
   const name = DEVICE_NAME_ENV || os.hostname() || 'Qurilma';
   return enroll(name);
 }
@@ -213,6 +262,17 @@ async function loop() {
 (async () => {
   applyConfigOverrides();
   console.log('[agent] Cloud server:', SERVER_URL);
+  if (isPackagedAgent() && /localhost|127\.0\.0\.1/i.test(SERVER_URL)) {
+    if (bundledCloud?.serverUrl) {
+      console.error(
+        '[agent] XATO: SERVER_URL localhost. Cloud EXE ichida bo‘lishi kerak edi — bu build noto‘g‘ri yig‘ilgan yoki eski EXE.',
+      );
+    } else {
+      console.error(
+        '[agent] XATO: bu EXE ichida cloud manzil qotirilmagan (CI secrets yo‘q). GitHub Actions orqali qayta yig‘ing.',
+      );
+    }
+  }
   startLocalUi();
   openLocalUi();
   try {

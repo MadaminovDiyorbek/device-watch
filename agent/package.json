@@ -8,7 +8,7 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "build:win": "npm run build:win:prep && pkg -t node18-win-x64 -o dist/device-watch-agent.exe src/index.js",
-    "build:win:prep": "node scripts/copy-public.js && powershell -ExecutionPolicy Bypass -File scripts/download-pkg-base.ps1"
+    "build:win:prep": "node scripts/write-cloud-defaults.js && node scripts/copy-public.js && powershell -ExecutionPolicy Bypass -File scripts/download-pkg-base.ps1"
   },
   "engines": {
     "node": ">=18"
@@ -23,7 +23,8 @@
   },
   "pkg": {
     "assets": [
-      "public/**/*"
+      "public/**/*",
+      "src/cloud-defaults.json"
     ]
   }
 }

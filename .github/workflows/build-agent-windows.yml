@@ -25,6 +25,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # EXE foydalanuvchisi hech qanday .env yozmaydi — cloud URL va enrollment kalit shu qadamda EXE ichiga qotadi.
+      # GitHub: Settings → Secrets and variables → Actions → Repository secrets:
+      #   AGENT_SERVER_URL   (masalan https://device-watch-server.onrender.com)
+      #   AGENT_ENROLLMENT_KEY  (Render ENROLLMENT_KEY bilan bir xil)
+      - name: Embed cloud defaults for packaged EXE
+        env:
+          AGENT_SERVER_URL: ${{ secrets.AGENT_SERVER_URL }}
+          AGENT_ENROLLMENT_KEY: ${{ secrets.AGENT_ENROLLMENT_KEY }}
+        run: node scripts/write-cloud-defaults.js
+
       - name: Build EXE
         run: npm run build:win
 
