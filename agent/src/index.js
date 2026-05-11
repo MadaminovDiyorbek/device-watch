@@ -119,6 +119,15 @@ function saveConfig(cfg) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf8');
 }
 
+/** Server (masalan Render) qayta yig‘ilganda yoki state tozalanganda token eskiradi. */
+function clearDeviceTokenOnly() {
+  const cfg = loadConfig();
+  if (!cfg) return;
+  delete cfg.deviceToken;
+  delete cfg.deviceId;
+  saveConfig(cfg);
+}
+
 function applyConfigOverrides() {
   const cfg = loadConfig();
   if (!cfg) return;
@@ -194,10 +203,19 @@ async function sendHeartbeat(token, payload) {
     },
     body: JSON.stringify(payload),
   });
-  if (!r.ok) {
-    const t = await r.text();
-    console.error('[agent] Heartbeat xato:', r.status, t);
+  if (r.ok) return { ok: true, needsReenroll: false };
+  const text = await r.text();
+  console.error('[agent] Heartbeat xato:', r.status, text);
+  let needsReenroll = false;
+  if (r.status === 401) {
+    try {
+      const j = JSON.parse(text);
+      if (j.error === 'Qurilma topilmadi') needsReenroll = true;
+    } catch {
+      if (/Qurilma topilmadi/i.test(text)) needsReenroll = true;
+    }
   }
+  return { ok: false, needsReenroll };
 }
 
 function startLocalUi() {
@@ -232,7 +250,7 @@ function openLocalUi() {
 }
 
 async function loop() {
-  const token = await ensureToken();
+  let token = await ensureToken();
   async function tick() {
     try {
       lastPingMs = await pingMs();
@@ -250,7 +268,12 @@ async function loop() {
         heartbeatSec: HEARTBEAT_SEC,
         pingMs: lastPingMs,
       };
-      await sendHeartbeat(token, latest);
+      const hb = await sendHeartbeat(token, latest);
+      if (hb.needsReenroll) {
+        console.log('[agent] Server bu token bilan qurilmani topmadi — yangi token olinmoqda.');
+        clearDeviceTokenOnly();
+        token = await ensureToken();
+      }
     } catch (e) {
       console.error('[agent]', e.message || e);
     }
